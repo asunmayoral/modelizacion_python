@@ -1,8 +1,6 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="es"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Laboratorio interactivo de modelos — Prueba de evaluación</title>
 <style>
   :root{ --azul:#2f5f8a; --azul2:#3d78ad; --bg:#f5f7fa; --card:#ffffff; --linea:#dbe3ec; }
@@ -26,48 +24,46 @@
   .ctrl label{font-weight:600;color:#3a4a5c}
   .ctrl input[type=number]{width:120px;padding:6px 8px;border:1px solid var(--linea);border-radius:6px}
   .ctrl select{width:150px;padding:6px 8px;border:1px solid var(--linea);border-radius:6px;background:#fff}
-  .ctrl.chk{flex-direction:row;align-items:center;gap:8px}
-  .ctrl.chk label{font-weight:500}
-  .rangeval{font-weight:700;color:var(--azul)}
+  .ctrl.chk{flex-direction:row;align-items:center;gap:8px} .ctrl.chk label{font-weight:500}
+  .ctrl input[type=range]{width:170px} .rangeval{font-weight:700;color:var(--azul)}
   .btns{margin:14px 0}
   button.run{background:var(--azul);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
   button.run:disabled{opacity:.5;cursor:not-allowed}
   button.reset{background:#eef2f7;color:#3a4a5c;border:1px solid var(--linea);padding:10px 14px;border-radius:8px;font-size:14px;cursor:pointer;margin-left:8px}
-  .out{display:grid;grid-template-columns:1fr;gap:14px;margin-top:8px}
-  @media(min-width:820px){.out{grid-template-columns:1.1fr .9fr}}
-  pre.summary{background:#0f1b2a;color:#e6edf3;padding:12px;border-radius:8px;overflow:auto;font-size:11.5px;line-height:1.35;max-height:460px;margin:0}
-  .plot img,.plot2 img{width:100%;border:1px solid var(--linea);border-radius:8px;background:#fff}
-  .plot2{margin-top:14px}
-  .plot2 .cap{font-size:12.5px;font-weight:700;color:var(--azul);margin:0 0 4px}
+  pre.summary{background:#0f1b2a;color:#e6edf3;padding:12px;border-radius:8px;overflow:auto;font-size:11.5px;line-height:1.35;max-height:340px;margin:8px 0 0}
+  .imgs{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}
+  @media(min-width:820px){.imgs{grid-template-columns:1fr 1fr}}
+  .fig{margin:0;border:1px solid var(--linea);border-radius:8px;padding:8px;background:#fff}
+  .fig figcaption{font-size:12px;font-weight:700;color:var(--azul);margin-bottom:6px}
+  .fig img{width:100%;display:block}
   details.qs{margin-top:16px;border:1px solid var(--linea);border-radius:8px;background:#fbfcfe}
   details.qs summary{cursor:pointer;padding:12px 14px;font-weight:700;color:var(--azul)}
   .q{padding:6px 16px 10px;font-size:14px} .q .en{font-weight:600;margin-bottom:4px}
   .q ul{margin:2px 0 0 4px;padding-left:18px} .q li{margin:2px 0}
   footer{max-width:1080px;margin:6px auto 30px;padding:0 16px;font-size:12px;color:#6b7683}
-</style>
-</head>
+</style></head>
 <body>
 <header>
-  <h1>Laboratorio interactivo de modelos estadísticos <span style="font-size:12px;font-weight:400;opacity:.85">· v3 (2026-07-23) · bandas de confianza en ANCOVA</span></h1>
-  <p>Ajusta y reajusta los modelos de la prueba (ANCOVA · logística · Poisson · mixto) cambiando las variables. Observa los resultados y los gráficos, y responde las preguntas. <b>Selecciona las variables</b> con las casillas y pulsa «Ajustar modelo».</p>
+  <h1>Laboratorio interactivo de modelos estadísticos <span style="font-size:12px;font-weight:400;opacity:.85">· v4 (2026-07-23) · logística: curvas de probabilidad + mapa de calor</span></h1>
+  <p>Ajusta y reajusta los modelos de la prueba (ANCOVA · logística · Poisson · mixto) cambiando las variables. <b>Selecciona las variables</b> con las casillas y pulsa «Ajustar modelo».</p>
 </header>
 <div class="wrap">
   <div id="status">⏳ Cargando Python en tu navegador (numpy, pandas, statsmodels, matplotlib…). La primera vez puede tardar entre 30 y 60 segundos. No cierres la página.</div>
-  <div class="tabs" id="tabs"></div>
-  <div id="panels"></div>
+  <div class="tabs" id="tabs"></div><div id="panels"></div>
 </div>
 <footer>Ejecuta Python real (statsmodels) en el navegador mediante Pyodide; los datos son simulados y fijos para todos. Cambia las variables y pulsa «Ajustar modelo» para reajustar. Las preguntas son las de la prueba; responde en el formulario que te indique tu profesor.</footer>
 
 <script type="text/python" id="pycode">import warnings; warnings.filterwarnings('ignore')
 import numpy as np, pandas as pd, io, base64, json
 import matplotlib; matplotlib.use('Agg'); import matplotlib.pyplot as plt
+from matplotlib.colors import TwoSlopeNorm
 import statsmodels.api as sm, statsmodels.formula.api as smf
 
 def _png(fig):
     buf = io.BytesIO(); fig.savefig(buf, format='png', dpi=90, bbox_inches='tight'); plt.close(fig)
     return base64.b64encode(buf.getvalue()).decode()
 
-# ---------------- ANCOVA ----------------
+# ================= ANCOVA =================
 def sim_ancova(n, seed):
     rng = np.random.default_rng(seed)
     horas = np.round(rng.uniform(2, 12, n), 1)
@@ -80,10 +76,8 @@ def fit_ancova(n=90, usar_horas=True, usar_dieta=True, interaccion=False, seed=1
     terms = []
     if usar_horas: terms.append('horas')
     if usar_dieta: terms.append('dieta')
-    if interaccion and usar_horas and usar_dieta:
-        rhs = 'horas*dieta'
-    else:
-        rhs = ' + '.join(terms) if terms else '1'
+    rhs = ('horas*dieta' if (interaccion and usar_horas and usar_dieta)
+           else (' + '.join(terms) if terms else '1'))
     m = smf.ols('rendimiento ~ ' + rhs, data=d).fit()
 
     colores = {'Enriquecida': 'tab:blue', 'Estandar': 'tab:orange'}
@@ -92,39 +86,36 @@ def fit_ancova(n=90, usar_horas=True, usar_dieta=True, interaccion=False, seed=1
         sub = d[d.dieta == dv]
         ax.scatter(sub.horas, sub.rendimiento, s=16, color=colores[dv], label=dv, alpha=0.55)
     xs = np.linspace(d.horas.min(), d.horas.max(), 60)
-    def _banda(dfg, color):
+    def banda(dfg, color):
         pr = m.get_prediction(dfg).summary_frame(alpha=0.05)
         ax.plot(xs, pr['mean'], color=color, lw=2.2)
         ax.fill_between(xs, pr['mean_ci_lower'], pr['mean_ci_upper'], color=color, alpha=0.18)
     if 'dieta' in rhs:
         for dv in ['Enriquecida', 'Estandar']:
-            _banda(pd.DataFrame({'horas': xs, 'dieta': [dv]*len(xs)}), colores[dv])
+            banda(pd.DataFrame({'horas': xs, 'dieta': [dv]*len(xs)}), colores[dv])
     else:
-        _banda(pd.DataFrame({'horas': xs, 'dieta': ['Enriquecida']*len(xs)}), 'black')
+        banda(pd.DataFrame({'horas': xs, 'dieta': ['Enriquecida']*len(xs)}), 'black')
     ax.set_xlabel('horas de entrenamiento'); ax.set_ylabel('rendimiento')
     ax.set_title('Ajuste con banda de confianza 95%%  (n = %d)' % n); ax.legend(fontsize=8)
     img_fit = _png(fig)
 
     resid = m.resid; fitted = m.fittedvalues
     fig2, axs = plt.subplots(1, 2, figsize=(8, 3.4))
-    sm.qqplot(resid, line='45', fit=True, ax=axs[0])
-    axs[0].set_title('Q-Q normal de los residuos', fontsize=10)
-    axs[1].scatter(fitted, resid, s=16, alpha=0.55)
-    axs[1].axhline(0, color='red', ls='--')
-    axs[1].set_xlabel('valores ajustados'); axs[1].set_ylabel('residuos')
-    axs[1].set_title('Residuos vs. ajustados', fontsize=10)
-    fig2.tight_layout()
-    img_diag = _png(fig2)
-    return m.summary().as_text(), img_fit, img_diag
+    sm.qqplot(resid, line='45', fit=True, ax=axs[0]); axs[0].set_title('Q-Q normal de los residuos', fontsize=10)
+    axs[1].scatter(fitted, resid, s=16, alpha=0.55); axs[1].axhline(0, color='red', ls='--')
+    axs[1].set_xlabel('valores ajustados'); axs[1].set_ylabel('residuos'); axs[1].set_title('Residuos vs. ajustados', fontsize=10)
+    fig2.tight_layout(); img_diag = _png(fig2)
+    return m.summary().as_text(), [('Ajuste con banda de confianza (95%)', img_fit),
+                                    ('Diagnóstico de los residuos', img_diag)]
 
-# ---------------- LOGIT ----------------
+# ================= LOGIT =================
 def sim_logit(n, seed):
     rng = np.random.default_rng(seed)
     he = np.round(rng.uniform(0, 10, n), 1); asi = np.round(rng.uniform(40, 100, n), 0)
     p = 1/(1 + np.exp(-(-6 + 0.6*he + 0.05*asi))); ap = rng.binomial(1, p)
     return pd.DataFrame({'aprueba': ap, 'horas_est': he, 'asistencia': asi})
 
-def fit_logit(n=200, usar_horas=True, usar_asist=True, umbral=0.5, seed=202):
+def fit_logit(n=200, usar_horas=True, usar_asist=True, umbral=0.5, asist_fija=80, horas_fijas=6, seed=202):
     d = sim_logit(n, seed)
     terms = []
     if usar_horas: terms.append('horas_est')
@@ -138,13 +129,40 @@ def fit_logit(n=200, usar_horas=True, usar_asist=True, umbral=0.5, seed=202):
     try: auc = roc_auc_score(d.aprueba, p)
     except Exception: auc = float('nan')
     txt += '\n\nExactitud = %.3f | AUC = %.3f  (umbral = %.2f)' % (accuracy_score(d.aprueba, cl), auc, umbral)
-    fig, ax = plt.subplots(figsize=(6, 4))
-    for v in [0, 1]:
-        ax.hist(d[d.aprueba == v].horas_est, bins=12, alpha=0.55, label='aprueba = %d' % v)
-    ax.set_xlabel('horas de estudio'); ax.set_ylabel('frecuencia'); ax.legend(); ax.set_title('aprueba ~ ' + rhs)
-    return txt, _png(fig)
 
-# ---------------- POISSON ----------------
+    def curva(varname, grid, fijo_col, fijo_val, xlabel, titulo):
+        df = pd.DataFrame({varname: grid, fijo_col: [fijo_val]*len(grid)})
+        pr = m.get_prediction(df).summary_frame(alpha=0.05)
+        fig, ax = plt.subplots(figsize=(5.6, 3.8))
+        ax.plot(grid, pr['predicted'], color='tab:blue', lw=2.2)
+        ax.fill_between(grid, pr['ci_lower'], pr['ci_upper'], color='tab:blue', alpha=0.18)
+        ax.axhline(umbral, color='grey', ls=':', lw=1)
+        ax.set_ylim(-0.02, 1.02); ax.set_xlabel(xlabel); ax.set_ylabel('P(aprobar)'); ax.set_title(titulo, fontsize=10)
+        return _png(fig)
+
+    img1 = curva('horas_est', np.linspace(0, 10, 60), 'asistencia', asist_fija,
+                 'horas de estudio', 'P(aprobar) vs horas  (asistencia = %d%%)' % int(asist_fija))
+    img2 = curva('asistencia', np.linspace(0, 100, 60), 'horas_est', horas_fijas,
+                 'asistencia (%)', 'P(aprobar) vs asistencia  (horas = %g)' % horas_fijas)
+
+    # Mapa de calor de clasificacion
+    hh = np.linspace(0, 10, 60); aa = np.linspace(0, 100, 60)
+    H, A = np.meshgrid(hh, aa)
+    P = m.predict(pd.DataFrame({'horas_est': H.ravel(), 'asistencia': A.ravel()})).values.reshape(H.shape)
+    fig, ax = plt.subplots(figsize=(5.6, 4.2))
+    norm = TwoSlopeNorm(vmin=0.0, vcenter=float(umbral), vmax=1.0)
+    im = ax.imshow(P, origin='lower', extent=[0, 10, 0, 100], aspect='auto', cmap='RdYlGn', norm=norm)
+    ax.contour(H, A, P, levels=[umbral], colors='black', linewidths=1.2)
+    ax.set_xlabel('horas de estudio'); ax.set_ylabel('asistencia (%)')
+    ax.set_title('Clasificación con el modelo logístico (verde = aprueba)', fontsize=10)
+    cb = fig.colorbar(im, ax=ax); cb.set_label('P(aprobar)')
+    img_heat = _png(fig)
+
+    return txt, [('P(aprobar) según las horas de estudio (asistencia fija) — con intervalo 95%', img1),
+                 ('P(aprobar) según la asistencia (horas de estudio fijas) — con intervalo 95%', img2),
+                 ('Clasificación con el modelo logístico: verde = aprueba (umbral = %.2f)' % umbral, img_heat)]
+
+# ================= POISSON =================
 def sim_poisson(n, seed):
     rng = np.random.default_rng(seed)
     cl = np.round(rng.uniform(1, 8, n), 2); pr = rng.choice([0, 1], n)
@@ -163,9 +181,9 @@ def fit_poisson(n=160, usar_clientes=True, usar_promo=True, seed=303):
     txt += '\n\nDeviance / grados de libertad = %.3f' % (m.deviance/m.df_resid)
     fig, ax = plt.subplots(figsize=(6, 4)); ax.scatter(d.clientes, d.reclamaciones, s=16, alpha=0.55)
     ax.set_xlabel('nº de clientes (cientos)'); ax.set_ylabel('reclamaciones'); ax.set_title('reclamaciones ~ ' + rhs)
-    return txt, _png(fig)
+    return txt, [('Reclamaciones frente al nº de clientes', _png(fig))]
 
-# ---------------- MIXTO ----------------
+# ================= MIXTO =================
 def sim_mixto(npac, seed):
     rng = np.random.default_rng(seed); filas = []
     for i in range(npac):
@@ -186,21 +204,19 @@ def fit_mixto(npac=30, pendiente_aleatoria=False, seed=404):
     for pid, sub in d.groupby('paciente'):
         ax.plot(sub.mes, sub.colesterol, marker='o', alpha=0.35)
     ax.set_xlabel('mes'); ax.set_ylabel('colesterol'); ax.set_title('colesterol ~ mes  (+ efecto aleatorio)')
-    return txt, _png(fig)
+    return txt, [('Colesterol por paciente (medidas repetidas)', _png(fig))]
 
-# ---------------- dispatcher ----------------
+# ================= dispatcher =================
 def run(model, pjson):
     try:
         p = json.loads(pjson)
         fn = {'ancova': fit_ancova, 'logit': fit_logit, 'poisson': fit_poisson, 'mixto': fit_mixto}[model]
-        res = fn(**p)
-        if len(res) == 3: t, img, img2 = res
-        else: t, img = res; img2 = ''
-        return json.dumps({'txt': t, 'img': img, 'img2': img2})
+        txt, imgs = fn(**p)
+        return json.dumps({'txt': txt, 'images': [{'cap': c, 'b64': b} for c, b in imgs]})
     except Exception as e:
         return json.dumps({'error': 'No se pudo ajustar: ' + str(e)})
 </script>
-<script type="application/json" id="qdata">{"ancova": {"titulo": "Análisis 1 · ANCOVA — Rendimiento deportivo", "contexto": "Un club estudia el rendimiento físico (puntos, numérico) de 90 deportistas según sus horas de entrenamiento semanal y el tipo de dieta (Estándar o Enriquecida). La categoría de referencia de la dieta es Enriquecida.", "preguntas": [{"n": 1, "q": "¿Cómo se interpreta el coeficiente de las horas de entrenamiento, cuyo valor es aproximadamente 2.75?", "o": ["Por cada hora más de entrenamiento semanal, el rendimiento aumenta unos 2.75 puntos de media, manteniendo fija la dieta.", "Por cada hora más de entrenamiento semanal, el rendimiento disminuye unos 2.75 puntos de media, manteniendo fija la dieta.", "Los deportistas entrenan de media unas 2.75 horas a la semana, con independencia de la dieta.", "Por cada punto de rendimiento ganado, se necesitan unas 2.75 horas más de entrenamiento semanal."]}, {"n": 2, "q": "El coeficiente de la dieta Estándar es −6.71 (referencia = Enriquecida). ¿Qué significa a igualdad de horas de entrenamiento?", "o": ["A igualdad de horas, la dieta Estándar rinde unos 6.71 puntos menos que la Enriquecida.", "A igualdad de horas, la dieta Estándar rinde unos 6.71 puntos más que la Enriquecida.", "La dieta Enriquecida no influye en el rendimiento de los deportistas.", "Un 6.71 % de los deportistas del estudio sigue la dieta Estándar."]}, {"n": 3, "q": "Según los coeficientes del modelo, ¿qué dieta se asocia a un mayor rendimiento medio?", "o": ["La dieta Enriquecida, porque la Estándar tiene un efecto negativo respecto a ella.", "La dieta Estándar, porque la Enriquecida tiene un efecto negativo respecto a ella.", "Ambas dietas se asocian exactamente al mismo rendimiento medio.", "No puede determinarse con la información que ofrece el modelo."]}, {"n": 4, "q": "El término de interacción horas × dieta tiene un p-valor de 0.90. ¿Qué conclusión es la correcta?", "o": ["No hay interacción: el efecto de las horas es el mismo en ambas dietas, así que las rectas son paralelas.", "Hay una interacción fuerte: el efecto de las horas es muy distinto en cada dieta.", "Las horas de entrenamiento no influyen en el rendimiento de los deportistas.", "La dieta no influye en el rendimiento de los deportistas."]}, {"n": 5, "q": "El coeficiente de determinación del modelo es R² = 0.82. ¿Qué indica?", "o": ["Que el modelo explica en torno al 82 % de la variabilidad del rendimiento.", "Que el modelo clasifica correctamente en torno al 82 % de los deportistas.", "Que en torno al 82 % de los deportistas mejora su rendimiento.", "Que el modelo comete en torno a un 82 % de error de predicción."]}, {"n": 6, "q": "Atendiendo a los p-valores, ¿qué predictoras resultan estadísticamente significativas (p < 0.05)?", "o": ["Tanto las horas de entrenamiento como la dieta, ambas con p < 0.001.", "Solamente las horas de entrenamiento; la dieta no es significativa.", "Solamente la dieta; las horas de entrenamiento no son significativas.", "Ninguna de las dos predictoras resulta significativa."]}, {"n": 7, "q": "Con dieta Enriquecida y 10 horas de entrenamiento (intercepto = 34.2; coeficiente de horas = 2.75), ¿cuál es el rendimiento esperado aproximado?", "o": ["Aproximadamente 62 puntos, resultado de 34.2 + 2.75 × 10.", "Aproximadamente 55 puntos, que correspondería a la dieta Estándar en esas horas.", "Aproximadamente 34 puntos, que es el valor del intercepto del modelo.", "Aproximadamente 28 puntos, por debajo del intercepto del modelo."]}, {"n": 8, "q": "Observa los gráficos de diagnóstico (Q-Q normal de los residuos y residuos frente a valores ajustados). ¿Qué conclusión es la más razonable?", "o": ["Los puntos del Q-Q siguen la diagonal y los residuos se reparten sin patrón alrededor de cero: los supuestos de normalidad y linealidad se cumplen razonablemente.", "El Q-Q muestra una curvatura marcada en forma de S: los residuos no son normales y el modelo no es válido.", "Los residuos frente a los ajustados dibujan un embudo que se ensancha: hay una heterocedasticidad grave.", "Los residuos frente a los ajustados dibujan una parábola clara: falta un término cuadrático en el modelo."]}, {"n": 9, "q": "Ajusta el modelo con varios tamaños muestrales (n = 20, 40, 90, 150, 300). ¿Qué le ocurre a la precisión de la predicción, es decir, a la anchura de las bandas de confianza del gráfico?", "o": ["Al aumentar n, las bandas de confianza se estrechan: la estimación gana precisión (menos incertidumbre).", "Al aumentar n, las bandas de confianza se ensanchan: la estimación pierde precisión.", "La anchura de las bandas no depende del tamaño muestral: se mantiene igual con cualquier n.", "Al aumentar n, las bandas desaparecen porque con más datos ya no queda ninguna incertidumbre."]}]}, "logit": {"titulo": "Análisis 2 · Regresión logística — Aprobar la asignatura", "contexto": "Se estudia si un estudiante aprueba (1) o no (0) una asignatura según sus horas de estudio semanales y su porcentaje de asistencia, sobre 200 estudiantes.", "preguntas": [{"n": 1, "q": "El odds ratio de las horas de estudio es 1.80. ¿Cómo se interpreta?", "o": ["Por cada hora más de estudio, los odds (la ventaja) de aprobar se multiplican por 1.80, es decir, aumentan un 80 %.", "Por cada hora más de estudio, la probabilidad de aprobar es exactamente del 80 %.", "Por cada hora más de estudio, la nota del examen aumenta en 1.80 puntos.", "Un 80 % de los estudiantes del curso terminan aprobando la asignatura."]}, {"n": 2, "q": "El coeficiente de la asistencia es positivo, con un odds ratio de 1.045. ¿Qué indica?", "o": ["Que una mayor asistencia se asocia a una mayor probabilidad de aprobar.", "Que una mayor asistencia se asocia a una menor probabilidad de aprobar.", "Que la asistencia no guarda relación con la probabilidad de aprobar.", "Que la asistencia determina de forma exacta la nota final del examen."]}, {"n": 3, "q": "Atendiendo a los p-valores, ¿qué predictoras resultan significativas (p < 0.05)?", "o": ["Tanto las horas de estudio como la asistencia, ambas con p < 0.001.", "Solamente las horas de estudio; la asistencia no es significativa.", "Solamente la asistencia; las horas de estudio no son significativas.", "Ninguna de las dos predictoras resulta significativa."]}, {"n": 4, "q": "Para un estudiante con 6 horas de estudio y 80 % de asistencia, el modelo estima una probabilidad de aprobar de 0.81. ¿Qué significa?", "o": ["Que tiene una probabilidad estimada del 81 % de aprobar la asignatura.", "Que aprobará la asignatura con total seguridad, sin margen de error.", "Que obtendrá en el examen una nota estimada de 8.1 sobre 10.", "Que el 81 % de la clase comparte ese mismo perfil de estudio y asistencia."]}, {"n": 5, "q": "El AUC del modelo es 0.85. ¿Qué indica sobre su rendimiento?", "o": ["Que tiene buena capacidad para distinguir aprobados de suspensos (0.5 sería azar y 1 sería perfecto).", "Que el 85 % de los estudiantes del curso aprueban la asignatura.", "Que el modelo se equivoca exactamente en el 15 % de las predicciones.", "Que el AUC es un indicador que aquí no aporta información útil."]}, {"n": 6, "q": "El modelo clasifica con umbral 0.5 y alcanza una exactitud del 78 %, mientras que en la muestra aprueba el 56 %. ¿Qué se puede afirmar?", "o": ["Que el modelo (78 %) mejora de forma clara respecto a predecir siempre la clase mayoritaria (56 %).", "Que el modelo (78 %) es inútil porque no supera el nivel del azar.", "Que el modelo (78 %) rinde por debajo de predecir siempre la clase mayoritaria (56 %).", "Que la exactitud (78 %) y el AUC son en realidad la misma medida."]}, {"n": 7, "q": "El pseudo-R² de McFadden es 0.32. En regresión logística, ¿cómo se valora ese resultado?", "o": ["Como un ajuste bueno, ya que los pseudo-R² se mueven en rangos más bajos que el R² clásico.", "Como un ajuste pésimo, ya que está muy lejos de 1.", "Como que el modelo acierta exactamente el 32 % de las clasificaciones.", "Como un valor que carece de interpretación en la regresión logística."]}]}, "poisson": {"titulo": "Análisis 3 · Regresión de Poisson — Reclamaciones por tienda", "contexto": "Una cadena analiza el número de reclamaciones semanales por tienda según el número de clientes (en cientos) y si hubo promoción esa semana, sobre 160 semanas-tienda.", "preguntas": [{"n": 1, "q": "El rate ratio del número de clientes es 1.26. ¿Cómo se interpreta?", "o": ["Por cada 100 clientes más, el número esperado de reclamaciones se multiplica por 1.26, es decir, aumenta un 26 %.", "Por cada 100 clientes más, el número esperado de reclamaciones disminuye un 26 %.", "Cada cliente adicional añade exactamente 1.26 reclamaciones a la tienda.", "El 26 % de los clientes de la tienda acaba presentando una reclamación."]}, {"n": 2, "q": "El rate ratio de la promoción es 0.675. ¿Qué efecto tiene hacer promoción?", "o": ["Reduce el número esperado de reclamaciones, que queda en el 67.5 % (aproximadamente un 32 % menos).", "Aumenta el número esperado de reclamaciones en torno a un 67.5 %.", "No tiene ningún efecto sobre el número esperado de reclamaciones.", "Multiplica por 32 el número esperado de reclamaciones de la tienda."]}, {"n": 3, "q": "Atendiendo a los p-valores, ¿son significativas las dos predictoras?", "o": ["Sí, tanto el número de clientes como la promoción, ambas con p < 0.001.", "Solamente el número de clientes; la promoción no es significativa.", "Solamente la promoción; el número de clientes no es significativo.", "No, ninguna de las dos predictoras resulta significativa."]}, {"n": 4, "q": "Para una tienda con 500 clientes y sin promoción, el modelo predice 5.17 reclamaciones. ¿Qué representa ese valor?", "o": ["La media (esperanza) de reclamaciones que predice el modelo en esas condiciones.", "El número máximo de reclamaciones que podría alcanzar esa tienda.", "Que esa tienda tendrá exactamente 5 reclamaciones esa semana.", "Que un 5.17 % de los clientes de esa tienda presentará una reclamación."]}, {"n": 5, "q": "La deviance entre grados de libertad vale 1.06. ¿Qué sugiere sobre el modelo?", "o": ["Que el modelo de Poisson es adecuado, al estar cerca de 1 y no apreciarse sobredispersión.", "Que existe una fuerte sobredispersión y el modelo de Poisson no es adecuado.", "Que el modelo ajusta muy mal y debería descartarse por completo.", "Que faltan datos para poder ajustar correctamente el modelo."]}, {"n": 6, "q": "¿Por qué se usa una regresión de Poisson en lugar de una regresión lineal en este problema?", "o": ["Porque la respuesta es un recuento (entero no negativo) cuya variabilidad crece con la media.", "Porque el modelo incluye exactamente dos variables predictoras.", "Porque las variables predictoras son de tipo categórico.", "Porque la muestra disponible es demasiado pequeña para una regresión lineal."]}, {"n": 7, "q": "Comparando dos tiendas con el mismo número de clientes, una con promoción y otra sin ella, ¿qué predice el modelo?", "o": ["Que la tienda con promoción tendrá menos reclamaciones esperadas.", "Que la tienda con promoción tendrá más reclamaciones esperadas.", "Que ambas tiendas tendrán exactamente las mismas reclamaciones esperadas.", "Que no es posible comparar ambas tiendas con este modelo."]}]}, "mixto": {"titulo": "Análisis 4 · Modelo lineal mixto — Colesterol (medidas repetidas)", "contexto": "Se sigue el colesterol (mg/dL) de 30 pacientes durante 5 meses (una medida al mes, meses 0 a 4). Como cada paciente aporta varias medidas, se usa un modelo lineal mixto con intercepto aleatorio por paciente y el mes como efecto fijo.", "preguntas": [{"n": 1, "q": "El efecto fijo del mes vale −7.80. ¿Cómo se interpreta?", "o": ["Que, de media, el colesterol baja unos 7.80 mg/dL por cada mes que pasa.", "Que, de media, el colesterol sube unos 7.80 mg/dL por cada mes que pasa.", "Que se incorporan unos 7.80 pacientes nuevos al estudio cada mes.", "Que el colesterol baja un 7.80 % de su valor cada mes."]}, {"n": 2, "q": "¿Por qué se emplea un modelo mixto en lugar de una regresión normal?", "o": ["Porque las 5 medidas de un mismo paciente no son independientes, al estar agrupadas por paciente.", "Porque el modelo contiene dos variables y una regresión normal solo admite una.", "Porque el colesterol es una variable categórica y no numérica.", "Porque no hay suficientes datos para ajustar una regresión normal."]}, {"n": 3, "q": "La varianza entre pacientes es 315.5 y la residual 41.7. ¿Qué indica esta comparación?", "o": ["Que la mayor parte de la variabilidad se debe a diferencias entre pacientes, más que a la variación dentro de cada uno.", "Que los pacientes son muy parecidos entre sí en sus niveles de colesterol.", "Que el paso del tiempo (mes) no influye en el colesterol de los pacientes.", "Que el modelo mixto no ha conseguido ajustar bien los datos."]}, {"n": 4, "q": "Ese reparto equivale a que en torno al 88 % de la variabilidad no explicada por el mes se debe al paciente. ¿Qué implica?", "o": ["Que ignorar al paciente y usar una regresión normal sería un error importante.", "Que da igual usar un modelo mixto o una regresión normal en este caso.", "Que la identidad del paciente no aporta información relevante al modelo.", "Que convendría eliminar la variable mes del modelo ajustado."]}, {"n": 5, "q": "En este modelo, ¿qué papel juegan el efecto fijo y el efecto aleatorio?", "o": ["El efecto fijo es la tendencia media con el mes (común a todos) y el aleatorio es el nivel propio de cada paciente.", "El efecto fijo es el nivel propio de cada paciente y el aleatorio es la tendencia media con el mes.", "El efecto fijo y el efecto aleatorio representan exactamente lo mismo en el modelo.", "En este modelo no existe ningún efecto fijo, solo efectos aleatorios."]}, {"n": 6, "q": "El intercepto (efecto fijo) vale aproximadamente 215. ¿Qué representa?", "o": ["El colesterol medio esperado en el mes 0 (inicio), promediando el conjunto de pacientes.", "El colesterol medio esperado al final del seguimiento, en el mes 4.", "El número total de pacientes que participan en el estudio.", "La varianza del colesterol entre los distintos pacientes."]}, {"n": 7, "q": "El efecto del mes tiene un p-valor menor que 0.001. ¿Qué se concluye?", "o": ["Que el colesterol cambia de forma estadísticamente significativa con el tiempo, en concreto desciende.", "Que el paso del tiempo (mes) no influye de forma significativa en el colesterol.", "Que todos los pacientes presentan exactamente el mismo colesterol.", "Que el modelo ajustado no es válido para estos datos."]}]}}</script>
+<script type="application/json" id="qdata">{"ancova": {"titulo": "Análisis 1 · ANCOVA — Rendimiento deportivo", "contexto": "Un club estudia el rendimiento físico (puntos, numérico) de 90 deportistas según sus horas de entrenamiento semanal y el tipo de dieta (Estándar o Enriquecida). La categoría de referencia de la dieta es Enriquecida.", "preguntas": [{"n": 1, "q": "¿Cómo se interpreta el coeficiente de las horas de entrenamiento, cuyo valor es aproximadamente 2.75?", "o": ["Por cada hora más de entrenamiento semanal, el rendimiento aumenta unos 2.75 puntos de media, manteniendo fija la dieta.", "Por cada hora más de entrenamiento semanal, el rendimiento disminuye unos 2.75 puntos de media, manteniendo fija la dieta.", "Los deportistas entrenan de media unas 2.75 horas a la semana, con independencia de la dieta.", "Por cada punto de rendimiento ganado, se necesitan unas 2.75 horas más de entrenamiento semanal."]}, {"n": 2, "q": "El coeficiente de la dieta Estándar es −6.71 (referencia = Enriquecida). ¿Qué significa a igualdad de horas de entrenamiento?", "o": ["A igualdad de horas, la dieta Estándar rinde unos 6.71 puntos menos que la Enriquecida.", "A igualdad de horas, la dieta Estándar rinde unos 6.71 puntos más que la Enriquecida.", "La dieta Enriquecida no influye en el rendimiento de los deportistas.", "Un 6.71 % de los deportistas del estudio sigue la dieta Estándar."]}, {"n": 3, "q": "Según los coeficientes del modelo, ¿qué dieta se asocia a un mayor rendimiento medio?", "o": ["La dieta Enriquecida, porque la Estándar tiene un efecto negativo respecto a ella.", "La dieta Estándar, porque la Enriquecida tiene un efecto negativo respecto a ella.", "Ambas dietas se asocian exactamente al mismo rendimiento medio.", "No puede determinarse con la información que ofrece el modelo."]}, {"n": 4, "q": "El término de interacción horas × dieta tiene un p-valor de 0.90. ¿Qué conclusión es la correcta?", "o": ["No hay interacción: el efecto de las horas es el mismo en ambas dietas, así que las rectas son paralelas.", "Hay una interacción fuerte: el efecto de las horas es muy distinto en cada dieta.", "Las horas de entrenamiento no influyen en el rendimiento de los deportistas.", "La dieta no influye en el rendimiento de los deportistas."]}, {"n": 5, "q": "El coeficiente de determinación del modelo es R² = 0.82. ¿Qué indica?", "o": ["Que el modelo explica en torno al 82 % de la variabilidad del rendimiento.", "Que el modelo clasifica correctamente en torno al 82 % de los deportistas.", "Que en torno al 82 % de los deportistas mejora su rendimiento.", "Que el modelo comete en torno a un 82 % de error de predicción."]}, {"n": 6, "q": "Atendiendo a los p-valores, ¿qué predictoras resultan estadísticamente significativas (p < 0.05)?", "o": ["Tanto las horas de entrenamiento como la dieta, ambas con p < 0.001.", "Solamente las horas de entrenamiento; la dieta no es significativa.", "Solamente la dieta; las horas de entrenamiento no son significativas.", "Ninguna de las dos predictoras resulta significativa."]}, {"n": 7, "q": "Con dieta Enriquecida y 10 horas de entrenamiento (intercepto = 34.2; coeficiente de horas = 2.75), ¿cuál es el rendimiento esperado aproximado?", "o": ["Aproximadamente 62 puntos, resultado de 34.2 + 2.75 × 10.", "Aproximadamente 55 puntos, que correspondería a la dieta Estándar en esas horas.", "Aproximadamente 34 puntos, que es el valor del intercepto del modelo.", "Aproximadamente 28 puntos, por debajo del intercepto del modelo."]}, {"n": 8, "q": "Observa los gráficos de diagnóstico (Q-Q normal de los residuos y residuos frente a valores ajustados). ¿Qué conclusión es la más razonable?", "o": ["Los puntos del Q-Q siguen la diagonal y los residuos se reparten sin patrón alrededor de cero: los supuestos de normalidad y linealidad se cumplen razonablemente.", "El Q-Q muestra una curvatura marcada en forma de S: los residuos no son normales y el modelo no es válido.", "Los residuos frente a los ajustados dibujan un embudo que se ensancha: hay una heterocedasticidad grave.", "Los residuos frente a los ajustados dibujan una parábola clara: falta un término cuadrático en el modelo."]}, {"n": 9, "q": "Ajusta el modelo con varios tamaños muestrales (n = 20, 40, 90, 150, 300). ¿Qué le ocurre a la precisión de la predicción, es decir, a la anchura de las bandas de confianza del gráfico?", "o": ["Al aumentar n, las bandas de confianza se estrechan: la estimación gana precisión (menos incertidumbre).", "Al aumentar n, las bandas de confianza se ensanchan: la estimación pierde precisión.", "La anchura de las bandas no depende del tamaño muestral: se mantiene igual con cualquier n.", "Al aumentar n, las bandas desaparecen porque con más datos ya no queda ninguna incertidumbre."]}]}, "logit": {"titulo": "Análisis 2 · Regresión logística — Aprobar la asignatura", "contexto": "Se estudia si un estudiante aprueba (1) o no (0) una asignatura según sus horas de estudio semanales y su porcentaje de asistencia, sobre 200 estudiantes. Los tres gráficos permiten predecir la probabilidad de aprobar y explorar la clasificación según el umbral.", "preguntas": [{"n": 1, "q": "El odds ratio de las horas de estudio es 1.80. ¿Cómo se interpreta?", "o": ["Por cada hora más de estudio, los odds (la ventaja) de aprobar se multiplican por 1.80, es decir, aumentan un 80 %.", "Por cada hora más de estudio, la probabilidad de aprobar es exactamente del 80 %.", "Por cada hora más de estudio, la nota del examen aumenta en 1.80 puntos.", "Un 80 % de los estudiantes del curso terminan aprobando la asignatura."]}, {"n": 2, "q": "El coeficiente de la asistencia es positivo, con un odds ratio de 1.045. ¿Qué indica?", "o": ["Que una mayor asistencia se asocia a una mayor probabilidad de aprobar.", "Que una mayor asistencia se asocia a una menor probabilidad de aprobar.", "Que la asistencia no guarda relación con la probabilidad de aprobar.", "Que la asistencia determina de forma exacta la nota final del examen."]}, {"n": 3, "q": "Atendiendo a los p-valores, ¿qué predictoras resultan significativas (p < 0.05)?", "o": ["Tanto las horas de estudio como la asistencia, ambas con p < 0.001.", "Solamente las horas de estudio; la asistencia no es significativa.", "Solamente la asistencia; las horas de estudio no son significativas.", "Ninguna de las dos predictoras resulta significativa."]}, {"n": 4, "q": "Para un estudiante con 6 horas de estudio y 80 % de asistencia, el modelo estima una probabilidad de aprobar de 0.81. ¿Qué significa?", "o": ["Que tiene una probabilidad estimada del 81 % de aprobar la asignatura.", "Que aprobará la asignatura con total seguridad, sin margen de error.", "Que obtendrá en el examen una nota estimada de 8.1 sobre 10.", "Que el 81 % de la clase comparte ese mismo perfil de estudio y asistencia."]}, {"n": 5, "q": "El AUC del modelo es 0.85. ¿Qué indica sobre su rendimiento?", "o": ["Que tiene buena capacidad para distinguir aprobados de suspensos (0.5 sería azar y 1 sería perfecto).", "Que el 85 % de los estudiantes del curso aprueban la asignatura.", "Que el modelo se equivoca exactamente en el 15 % de las predicciones.", "Que el AUC es un indicador que aquí no aporta información útil."]}, {"n": 6, "q": "El pseudo-R² de McFadden es 0.32. En regresión logística, ¿cómo se valora ese resultado?", "o": ["Como un ajuste bueno, ya que los pseudo-R² se mueven en rangos más bajos que el R² clásico.", "Como un ajuste pésimo, ya que está muy lejos de 1.", "Como que el modelo acierta exactamente el 32 % de las clasificaciones.", "Como un valor que carece de interpretación en la regresión logística."]}, {"n": 7, "q": "El modelo clasifica con umbral 0.5 y alcanza una exactitud del 78 %, mientras que en la muestra aprueba el 56 %. ¿Qué se puede afirmar?", "o": ["Que el modelo (78 %) mejora de forma clara respecto a predecir siempre la clase mayoritaria (56 %).", "Que el modelo (78 %) es inútil porque no supera el nivel del azar.", "Que el modelo (78 %) rinde por debajo de predecir siempre la clase mayoritaria (56 %).", "Que la exactitud (78 %) y el AUC son en realidad la misma medida."]}, {"n": 8, "q": "En el gráfico de P(aprobar) frente a las horas de estudio (con la asistencia fija), ¿qué comportamiento se observa al aumentar las horas?", "o": ["La probabilidad estimada de aprobar crece siguiendo una curva en forma de S (sigmoide), acotada entre 0 y 1.", "La probabilidad estimada de aprobar disminuye a medida que se estudia más.", "La probabilidad se mantiene constante porque solo influye la asistencia.", "La probabilidad crece como una recta y llega a superar el valor 1."]}, {"n": 9, "q": "En el gráfico de P(aprobar) frente a la asistencia (con las horas de estudio fijas), si subes el valor fijo de las horas de estudio, ¿qué le ocurre a la curva?", "o": ["Se desplaza hacia arriba: para una misma asistencia, la probabilidad estimada de aprobar es mayor.", "Se desplaza hacia abajo: estudiar más reduce la probabilidad estimada de aprobar.", "No cambia en absoluto: el valor fijo de las horas no afecta a la curva.", "Se convierte en una recta horizontal situada en 0.5."]}, {"n": 10, "q": "En el mapa de calor de clasificación (verde = aprueba, rojo = suspende), ¿qué perfil de estudiante cae en la zona verde?", "o": ["Los estudiantes con muchas horas de estudio y/o alta asistencia, cuya probabilidad estimada supera el umbral.", "Los estudiantes con pocas horas de estudio y baja asistencia.", "Todos los estudiantes por igual, sin distinción de horas ni asistencia.", "Únicamente los estudiantes que tienen exactamente un 50 % de asistencia."]}, {"n": 11, "q": "Si aumentas el tamaño muestral (n) manteniendo fijo el umbral, ¿qué esperas de la clasificación del modelo?", "o": ["Que las estimaciones sean más precisas y estables, con una frontera de clasificación estimada con menos incertidumbre.", "Que la clasificación empeore siempre por el hecho de añadir más datos.", "Que la frontera entre aprobar y suspender desaparezca por completo.", "Que el umbral óptimo pase a valer automáticamente 0."]}, {"n": 12, "q": "Sobre la clasificación del modelo, ¿cuál de estas afirmaciones combina correctamente el papel del tamaño muestral y del umbral?", "o": ["El tamaño muestral afecta a la precisión con que se estima la frontera, y el umbral decide dónde se traza (cuánta probabilidad se exige para clasificar como aprobado).", "Ni el tamaño muestral ni el umbral tienen ningún efecto sobre la clasificación.", "Bajar el umbral siempre reduce el número de estudiantes clasificados como aprobados.", "Aumentar el tamaño muestral cambia el umbral automáticamente a 1."]}]}, "poisson": {"titulo": "Análisis 3 · Regresión de Poisson — Reclamaciones por tienda", "contexto": "Una cadena analiza el número de reclamaciones semanales por tienda según el número de clientes (en cientos) y si hubo promoción esa semana, sobre 160 semanas-tienda.", "preguntas": [{"n": 1, "q": "El rate ratio del número de clientes es 1.26. ¿Cómo se interpreta?", "o": ["Por cada 100 clientes más, el número esperado de reclamaciones se multiplica por 1.26, es decir, aumenta un 26 %.", "Por cada 100 clientes más, el número esperado de reclamaciones disminuye un 26 %.", "Cada cliente adicional añade exactamente 1.26 reclamaciones a la tienda.", "El 26 % de los clientes de la tienda acaba presentando una reclamación."]}, {"n": 2, "q": "El rate ratio de la promoción es 0.675. ¿Qué efecto tiene hacer promoción?", "o": ["Reduce el número esperado de reclamaciones, que queda en el 67.5 % (aproximadamente un 32 % menos).", "Aumenta el número esperado de reclamaciones en torno a un 67.5 %.", "No tiene ningún efecto sobre el número esperado de reclamaciones.", "Multiplica por 32 el número esperado de reclamaciones de la tienda."]}, {"n": 3, "q": "Atendiendo a los p-valores, ¿son significativas las dos predictoras?", "o": ["Sí, tanto el número de clientes como la promoción, ambas con p < 0.001.", "Solamente el número de clientes; la promoción no es significativa.", "Solamente la promoción; el número de clientes no es significativo.", "No, ninguna de las dos predictoras resulta significativa."]}, {"n": 4, "q": "Para una tienda con 500 clientes y sin promoción, el modelo predice 5.17 reclamaciones. ¿Qué representa ese valor?", "o": ["La media (esperanza) de reclamaciones que predice el modelo en esas condiciones.", "El número máximo de reclamaciones que podría alcanzar esa tienda.", "Que esa tienda tendrá exactamente 5 reclamaciones esa semana.", "Que un 5.17 % de los clientes de esa tienda presentará una reclamación."]}, {"n": 5, "q": "La deviance entre grados de libertad vale 1.06. ¿Qué sugiere sobre el modelo?", "o": ["Que el modelo de Poisson es adecuado, al estar cerca de 1 y no apreciarse sobredispersión.", "Que existe una fuerte sobredispersión y el modelo de Poisson no es adecuado.", "Que el modelo ajusta muy mal y debería descartarse por completo.", "Que faltan datos para poder ajustar correctamente el modelo."]}, {"n": 6, "q": "¿Por qué se usa una regresión de Poisson en lugar de una regresión lineal en este problema?", "o": ["Porque la respuesta es un recuento (entero no negativo) cuya variabilidad crece con la media.", "Porque el modelo incluye exactamente dos variables predictoras.", "Porque las variables predictoras son de tipo categórico.", "Porque la muestra disponible es demasiado pequeña para una regresión lineal."]}, {"n": 7, "q": "Comparando dos tiendas con el mismo número de clientes, una con promoción y otra sin ella, ¿qué predice el modelo?", "o": ["Que la tienda con promoción tendrá menos reclamaciones esperadas.", "Que la tienda con promoción tendrá más reclamaciones esperadas.", "Que ambas tiendas tendrán exactamente las mismas reclamaciones esperadas.", "Que no es posible comparar ambas tiendas con este modelo."]}]}, "mixto": {"titulo": "Análisis 4 · Modelo lineal mixto — Colesterol (medidas repetidas)", "contexto": "Se sigue el colesterol (mg/dL) de 30 pacientes durante 5 meses (una medida al mes, meses 0 a 4). Como cada paciente aporta varias medidas, se usa un modelo lineal mixto con intercepto aleatorio por paciente y el mes como efecto fijo.", "preguntas": [{"n": 1, "q": "El efecto fijo del mes vale −7.80. ¿Cómo se interpreta?", "o": ["Que, de media, el colesterol baja unos 7.80 mg/dL por cada mes que pasa.", "Que, de media, el colesterol sube unos 7.80 mg/dL por cada mes que pasa.", "Que se incorporan unos 7.80 pacientes nuevos al estudio cada mes.", "Que el colesterol baja un 7.80 % de su valor cada mes."]}, {"n": 2, "q": "¿Por qué se emplea un modelo mixto en lugar de una regresión normal?", "o": ["Porque las 5 medidas de un mismo paciente no son independientes, al estar agrupadas por paciente.", "Porque el modelo contiene dos variables y una regresión normal solo admite una.", "Porque el colesterol es una variable categórica y no numérica.", "Porque no hay suficientes datos para ajustar una regresión normal."]}, {"n": 3, "q": "La varianza entre pacientes es 315.5 y la residual 41.7. ¿Qué indica esta comparación?", "o": ["Que la mayor parte de la variabilidad se debe a diferencias entre pacientes, más que a la variación dentro de cada uno.", "Que los pacientes son muy parecidos entre sí en sus niveles de colesterol.", "Que el paso del tiempo (mes) no influye en el colesterol de los pacientes.", "Que el modelo mixto no ha conseguido ajustar bien los datos."]}, {"n": 4, "q": "Ese reparto equivale a que en torno al 88 % de la variabilidad no explicada por el mes se debe al paciente. ¿Qué implica?", "o": ["Que ignorar al paciente y usar una regresión normal sería un error importante.", "Que da igual usar un modelo mixto o una regresión normal en este caso.", "Que la identidad del paciente no aporta información relevante al modelo.", "Que convendría eliminar la variable mes del modelo ajustado."]}, {"n": 5, "q": "En este modelo, ¿qué papel juegan el efecto fijo y el efecto aleatorio?", "o": ["El efecto fijo es la tendencia media con el mes (común a todos) y el aleatorio es el nivel propio de cada paciente.", "El efecto fijo es el nivel propio de cada paciente y el aleatorio es la tendencia media con el mes.", "El efecto fijo y el efecto aleatorio representan exactamente lo mismo en el modelo.", "En este modelo no existe ningún efecto fijo, solo efectos aleatorios."]}, {"n": 6, "q": "El intercepto (efecto fijo) vale aproximadamente 215. ¿Qué representa?", "o": ["El colesterol medio esperado en el mes 0 (inicio), promediando el conjunto de pacientes.", "El colesterol medio esperado al final del seguimiento, en el mes 4.", "El número total de pacientes que participan en el estudio.", "La varianza del colesterol entre los distintos pacientes."]}, {"n": 7, "q": "El efecto del mes tiene un p-valor menor que 0.001. ¿Qué se concluye?", "o": ["Que el colesterol cambia de forma estadísticamente significativa con el tiempo, en concreto desciende.", "Que el paso del tiempo (mes) no influye de forma significativa en el colesterol.", "Que todos los pacientes presentan exactamente el mismo colesterol.", "Que el modelo ajustado no es válido para estos datos."]}]}}</script>
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
 <script>
 const CONTROLS = {
@@ -213,17 +229,19 @@ const CONTROLS = {
   logit: [
     {t:'chk', k:'usar_horas', label:'horas de estudio', def:true},
     {t:'chk', k:'usar_asist', label:'asistencia', def:true},
-    {t:'range', k:'umbral', label:'Umbral de clasificación', def:0.5, min:0.1, max:0.9, step:0.05},
-    {t:'num', k:'n', label:'Tamaño muestral (n)', def:200, min:40, max:1000, step:20},
+    {t:'select', k:'n', label:'Tamaño muestral (n) — prueba varios', def:200, opts:[50,100,200,400,800]},
+    {t:'range', k:'asist_fija', label:'asistencia fija — gráfico 1 (%)', def:80, min:0, max:100, step:5},
+    {t:'range', k:'horas_fijas', label:'horas de estudio fijas — gráfico 2', def:6, min:0, max:10, step:0.5},
+    {t:'range', k:'umbral', label:'umbral de clasificación — mapa de calor', def:0.5, min:0.1, max:0.9, step:0.05},
   ],
   poisson: [
     {t:'chk', k:'usar_clientes', label:'nº de clientes', def:true},
     {t:'chk', k:'usar_promo', label:'promoción', def:true},
-    {t:'num', k:'n', label:'Tamaño muestral (n)', def:160, min:40, max:1000, step:20},
+    {t:'select', k:'n', label:'Tamaño muestral (n) — prueba varios', def:160, opts:[40,80,160,320,640]},
   ],
   mixto: [
     {t:'chk', k:'pendiente_aleatoria', label:'pendiente aleatoria por paciente', def:false},
-    {t:'num', k:'npac', label:'Nº de pacientes', def:30, min:8, max:120, step:1},
+    {t:'select', k:'npac', label:'Nº de pacientes — prueba varios', def:30, opts:[10,20,30,60,100]},
   ],
 };
 const ORDER=['ancova','logit','poisson','mixto'];
@@ -248,18 +266,15 @@ ORDER.forEach((key,i)=>{
   }).join('');
   let qs=d.preguntas.map(q=>{const op=shuffle(q.o);
     return `<div class="q"><div class="en">${q.n}. ${q.q}</div><ul>${op.map((o,j)=>`<li>${'abcd'[j]}) ${o}</li>`).join('')}</ul></div>`;}).join('');
-  const diag = key==='ancova' ? `<div class="plot2"><div class="cap">Diagnóstico de los residuos</div><img id="img2-${key}" alt="diagnóstico" style="display:none"></div>` : '';
   p.innerHTML=`<h2>${d.titulo}</h2><div class="ctx">${d.contexto}</div>
     <div class="controls"><div class="cleg">Selecciona las variables a incluir en el modelo</div>${ctrl}</div>
     <div class="btns"><button class="run" id="btn-${key}" disabled onclick="ajustar('${key}')">Ajustar modelo</button>
       <button class="reset" onclick="restablecer('${key}')">Restablecer valores</button></div>
-    <div class="out"><pre class="summary" id="sum-${key}">Pulsa «Ajustar modelo» para ver los resultados.</pre>
-      <div class="plot"><img id="img-${key}" alt="gráfico" style="display:none"></div></div>
-    ${diag}
+    <pre class="summary" id="sum-${key}">Pulsa «Ajustar modelo» para ver los resultados.</pre>
+    <div class="imgs" id="imgs-${key}"></div>
     <details class="qs"><summary>📝 Preguntas de este análisis (${d.preguntas.length})</summary>${qs}</details>`;
   panelsEl.appendChild(p);
 });
-
 function params(key){const o={};CONTROLS[key].forEach(c=>{const el=document.getElementById(key+'_'+c.k);
   o[c.k]=(c.t==='chk')?el.checked:Number(el.value);});return o;}
 function restablecer(key){CONTROLS[key].forEach(c=>{const el=document.getElementById(key+'_'+c.k);
@@ -275,26 +290,20 @@ async function boot(){
     await pyodide.runPythonAsync(document.getElementById('pycode').textContent);
     st.className='ok'; st.textContent='✅ Listo. Selecciona las variables y pulsa «Ajustar modelo».';
     document.querySelectorAll('button.run').forEach(b=>b.disabled=false);
-  }catch(e){
-    st.className='err'; st.textContent='❌ Error al cargar Python: '+e+'. Recarga con Ctrl+F5 o prueba en Chrome/Firefox actualizado.';
-  }
+  }catch(e){ st.className='err'; st.textContent='❌ Error al cargar Python: '+e+'. Recarga con Ctrl+F5 o prueba en Chrome/Firefox actualizado.'; }
 }
 async function ajustar(key){
-  const sum=document.getElementById('sum-'+key), img=document.getElementById('img-'+key), btn=document.getElementById('btn-'+key);
-  const img2=document.getElementById('img2-'+key);
-  btn.disabled=true; sum.textContent='Ajustando modelo…'; await new Promise(r=>setTimeout(r,20));
+  const sum=document.getElementById('sum-'+key), imgs=document.getElementById('imgs-'+key), btn=document.getElementById('btn-'+key);
+  btn.disabled=true; sum.textContent='Ajustando modelo…'; imgs.innerHTML=''; await new Promise(r=>setTimeout(r,20));
   try{
     pyodide.globals.set('_MODEL',key); pyodide.globals.set('_PARAMS',JSON.stringify(params(key)));
     const res=JSON.parse(pyodide.runPython('run(_MODEL, _PARAMS)'));
-    if(res.error){ sum.textContent='⚠️ '+res.error; img.style.display='none'; if(img2)img2.style.display='none'; }
-    else{
-      sum.textContent=res.txt; img.src='data:image/png;base64,'+res.img; img.style.display='block';
-      if(img2){ if(res.img2){img2.src='data:image/png;base64,'+res.img2; img2.style.display='block';} else img2.style.display='none'; }
-    }
+    if(res.error){ sum.textContent='⚠️ '+res.error; }
+    else{ sum.textContent=res.txt;
+      imgs.innerHTML=res.images.map(im=>`<figure class="fig"><figcaption>${im.cap}</figcaption><img src="data:image/png;base64,${im.b64}"></figure>`).join(''); }
   }catch(e){ sum.textContent='⚠️ '+e; }
   btn.disabled=false;
 }
 boot();
 </script>
-</body>
-</html>
+</body></html>
