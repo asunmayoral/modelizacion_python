@@ -43,11 +43,16 @@
   details.qs summary{cursor:pointer;padding:12px 14px;font-weight:700;color:var(--azul)}
   .q{padding:6px 16px 10px;font-size:14px} .q .en{font-weight:600;margin-bottom:4px}
   .q ul{margin:2px 0 0 4px;padding-left:18px} .q li{margin:2px 0}
+  .formbox{margin-top:16px;border:1px solid var(--azul);border-radius:8px;padding:12px;background:#fff}
+  .formbox h3{margin:0 0 10px;color:var(--azul);font-size:15px}
+  .formbox iframe{width:100%;border:0;border-radius:6px;min-height:820px}
+  .formnote{margin-top:16px;border:1px dashed var(--linea);border-radius:8px;padding:12px 14px;background:#fbfcfe;font-size:13.5px;color:#4a5a6a}
+  .formlink{font-size:12.5px;color:#6b7683;margin-top:8px} .formlink a{color:var(--azul)}
   footer{max-width:1080px;margin:6px auto 30px;padding:0 16px;font-size:12px;color:#6b7683}
 </style></head>
 <body>
 <header>
-  <h1>Laboratorio interactivo de modelos estadísticos <span style="font-size:12px;font-weight:400;opacity:.85">· v8 (2026-07-23) · mixto: dos modelos comparados; pregunta 8 reformulada</span></h1>
+  <h1>Laboratorio interactivo de modelos estadísticos <span style="font-size:12px;font-weight:400;opacity:.85">· v9 (2026-07-23) · formulario de respuestas embebido por modelo</span></h1>
   <p>Ajusta y reajusta los modelos de la prueba (ANCOVA · logística · Poisson · mixto) cambiando las variables. <b>Selecciona las variables</b> con las casillas y pulsa «Ajustar modelo».</p>
 </header>
 <div class="wrap">
@@ -296,6 +301,17 @@ const CONTROLS = {
 const ORDER=['ancova','logit','poisson','mixto'];
 const NAMES={ancova:'ANCOVA',logit:'Logística',poisson:'Poisson',mixto:'Mixto'};
 const QDATA=JSON.parse(document.getElementById('qdata').textContent);
+/* ====== FORMULARIOS DE GOOGLE ======
+   Pega aquí la URL de cada formulario (la que da el script de Google al crearlos).
+   Vale tanto la URL normal (…/viewform) como la de EMBED; si dejas una vacía,
+   en esa pestaña aparecerá un aviso en vez del formulario. */
+const FORMS = {
+  ancova: 'https://docs.google.com/forms/d/e/1FAIpQLSeSDhsqNGu6vohmCr_aPbFm7A7QrXgyclMH-KjauZli5LrvXw/viewform?embedded=true',
+  logit:  'https://docs.google.com/forms/d/e/1FAIpQLSe_Leod4r5QXaV2uuqHa1FQcOh8BRoS-FhYqgW3eRhNnDRhOw/viewform?embedded=true',
+  poisson:'https://docs.google.com/forms/d/e/1FAIpQLSetQZ8gltox5X4A-5MApqvpOzWrYtUE4d1SbOVPgjruq2R2hg/viewform?embedded=true',
+  mixto:  'https://docs.google.com/forms/d/e/1FAIpQLSftLK2NCTGWBmeC3qANqOhW4Iidc7MS3cR9I_5UTSxZ2s9s4g/viewform?embedded=true'
+};
+function embedSrc(u){ if(!u) return ''; return u.indexOf('embedded=true')>=0 ? u : (u + (u.indexOf('?')>=0?'&':'?') + 'embedded=true'); }
 function shuffle(a){const b=a.slice();for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
 
 const tabsEl=document.getElementById('tabs'), panelsEl=document.getElementById('panels');
@@ -317,6 +333,10 @@ ORDER.forEach((key,i)=>{
     `<div class="ctrl-line"><label for="${key}_${c.k}">${c.pre} <span class="rangeval" id="${key}_${c.k}_v">${c.def}</span>${c.post?(' '+c.post):''}</label><input type="range" id="${key}_${c.k}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.def}" oninput="document.getElementById('${key}_${c.k}_v').textContent=this.value"></div>`).join('');
   let qs=d.preguntas.map(q=>{const op=shuffle(q.o);
     return `<div class="q"><div class="en">${q.n}. ${q.q}</div><ul>${op.map((o,j)=>`<li>${'abcd'[j]}) ${o}</li>`).join('')}</ul></div>`;}).join('');
+  const _src=embedSrc(FORMS[key]);
+  let formHtml=_src
+    ? `<div class="formbox"><h3>✍️ Responde aquí las preguntas de este modelo</h3><iframe src="${_src}" width="100%" height="820" frameborder="0" marginheight="0" marginwidth="0" loading="lazy">Cargando el formulario…</iframe><div class="formlink">¿No ves el formulario o no puedes iniciar sesión? <a href="${FORMS[key]}" target="_blank" rel="noopener">Ábrelo en una pestaña nueva</a>.</div></div>`
+    : `<div class="formnote">✍️ <b>Formulario de respuestas:</b> aún no configurado. Pega la URL de este modelo en <code>FORMS.${key}</code> dentro del código (la obtienes al crear los formularios de Google) y el cuestionario aparecerá aquí incrustado.</div>`;
   p.innerHTML=`<h2>${d.titulo}</h2><div class="ctx">${d.contexto}</div>
     <div class="controls"><div class="cleg">Selecciona las variables a incluir en el modelo</div>${ctrl}</div>
     ${lineHtml}
@@ -324,7 +344,8 @@ ORDER.forEach((key,i)=>{
       <button class="reset" onclick="restablecer('${key}')">Restablecer valores</button></div>
     <pre class="summary" id="sum-${key}">Pulsa «Ajustar modelo» para ver los resultados.</pre>
     <div class="imgs" id="imgs-${key}"></div>
-    <details class="qs"><summary>📝 Preguntas de este análisis (${d.preguntas.length})</summary>${qs}</details>`;
+    <details class="qs"><summary>📝 Preguntas de este análisis (${d.preguntas.length})</summary>${qs}</details>
+    ${formHtml}`;
   panelsEl.appendChild(p);
 });
 function params(key){const o={};CONTROLS[key].forEach(c=>{const el=document.getElementById(key+'_'+c.k);
