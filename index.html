@@ -47,7 +47,7 @@
 </style></head>
 <body>
 <header>
-  <h1>Laboratorio interactivo de modelos estadísticos <span style="font-size:12px;font-weight:400;opacity:.85">· v6 (2026-07-23) · Poisson y mixto con predicción y nuevos gráficos</span></h1>
+  <h1>Laboratorio interactivo de modelos estadísticos <span style="font-size:12px;font-weight:400;opacity:.85">· v7 (2026-07-23) · mixto: dos modelos comparados (sin/con efecto aleatorio)</span></h1>
   <p>Ajusta y reajusta los modelos de la prueba (ANCOVA · logística · Poisson · mixto) cambiando las variables. <b>Selecciona las variables</b> con las casillas y pulsa «Ajustar modelo».</p>
 </header>
 <div class="wrap">
@@ -209,36 +209,52 @@ def sim_mixto(npac, seed):
             filas.append((f'P{i+1}', mes, round(210 - 7*mes + b0 + b1*mes + rng.normal(0, 6), 1)))
     return pd.DataFrame(filas, columns=['paciente', 'mes', 'colesterol'])
 
-def fit_mixto(npac=30, pendiente_aleatoria=False, seed=404):
+def fit_mixto(npac=30, seed=404):
+    import itertools
     d = sim_mixto(npac, seed)
-    kw = dict(groups='paciente')
-    if pendiente_aleatoria: kw['re_formula'] = '~mes'
-    m = smf.mixedlm('colesterol ~ mes', d, **kw).fit()
-    vg = float(np.atleast_2d(m.cov_re)[0, 0]); vr = m.scale
-    txt = m.summary().as_text()
-    txt += '\n\nVar. entre pacientes = %.1f | Var. residual = %.1f | %% debido al paciente = %.0f%%' % (vg, vr, 100*vg/(vg+vr))
-    fe = m.fe_params; mg = np.array([0, 1, 2, 3, 4])
-    linea_fija = fe['Intercept'] + fe['mes']*mg
-    # Grafico 1: ajuste del efecto fijo (tendencia media)
+    # Ajustamos los DOS modelos a la vez
+    m_ols = smf.ols('colesterol ~ mes', data=d).fit()                       # SIN efecto aleatorio
+    m_mix = smf.mixedlm('colesterol ~ mes', d, groups='paciente').fit()     # CON efecto aleatorio
+    vg = float(np.atleast_2d(m_mix.cov_re)[0, 0]); vr = m_mix.scale
+
+    # Summaries uno al lado del otro (izq = OLS, der = mixto)
+    left = 'SIN efecto aleatorio  —  regresión OLS (ignora al paciente)\n' + m_ols.summary().as_text()
+    right = 'CON efecto aleatorio  —  modelo lineal mixto (intercepto por paciente)\n' + m_mix.summary().as_text()
+    la = left.split('\n'); lb = right.split('\n'); w = max(len(x) for x in la)
+    txt = '\n'.join((l or '').ljust(w) + '   ' + (r or '')
+                    for l, r in itertools.zip_longest(la, lb, fillvalue=''))
+    txt += '\n\n[Modelo mixto]  Var. entre pacientes = %.1f | Var. residual = %.1f | %% debido al paciente = %.0f%%' % (vg, vr, 100*vg/(vg+vr))
+
+    # Predicción del efecto fijo (del modelo mixto) con su IC 95%
+    fe = m_mix.fe_params; mg = np.array([0., 1, 2, 3, 4])
+    cov_fe = np.asarray(m_mix.cov_params())[:2, :2]
+    X = np.column_stack([np.ones_like(mg), mg])
+    se = np.sqrt(np.einsum('ij,jk,ik->i', X, cov_fe, X))
+    pred = fe['Intercept'] + fe['mes']*mg
+    lo, hi = pred - 1.96*se, pred + 1.96*se
+
+    # Gráfico 1: efecto fijo con su IC 95%
     fig1, ax1 = plt.subplots(figsize=(6, 4))
     for pid, sub in d.groupby('paciente'):
         ax1.plot(sub.mes, sub.colesterol, color='lightgray', lw=0.8, zorder=1)
-    ax1.plot(mg, linea_fija, color='crimson', lw=3, zorder=3, label='efecto fijo (tendencia media)')
+    ax1.plot(mg, pred, color='crimson', lw=3, zorder=3, label='efecto fijo (tendencia media)')
+    ax1.fill_between(mg, lo, hi, color='crimson', alpha=0.20, zorder=2, label='IC 95% del efecto fijo')
     ax1.set_xlabel('mes'); ax1.set_ylabel('colesterol')
-    ax1.set_title('Ajuste del EFECTO FIJO (media de la población)', fontsize=10); ax1.legend(fontsize=8)
+    ax1.set_title('Efecto fijo con IC 95%%  (n = %d pacientes)' % npac, fontsize=10); ax1.legend(fontsize=8)
     img1 = _png(fig1)
-    # Grafico 2: ajustes por paciente (fijo + efectos aleatorios)
-    d2 = d.copy(); d2['ajuste'] = m.fittedvalues
+
+    # Gráfico 2: ajustes por paciente (fijo + aleatorios) + IC del efecto fijo
+    d2 = d.copy(); d2['ajuste'] = m_mix.fittedvalues
     fig2, ax2 = plt.subplots(figsize=(6, 4))
     for pid, sub in d2.groupby('paciente'):
-        ax2.plot(sub.mes, sub.ajuste, color='steelblue', lw=1, alpha=0.55)
-    ax2.plot(mg, linea_fija, color='crimson', lw=3, label='efecto fijo (media)')
-    tipo = 'intercepto y pendiente' if pendiente_aleatoria else 'intercepto'
+        ax2.plot(sub.mes, sub.ajuste, color='steelblue', lw=1, alpha=0.5)
+    ax2.plot(mg, pred, color='crimson', lw=3, label='efecto fijo (media)')
+    ax2.fill_between(mg, lo, hi, color='crimson', alpha=0.20, label='IC 95% del efecto fijo')
     ax2.set_xlabel('mes'); ax2.set_ylabel('colesterol')
-    ax2.set_title('Ajustes por paciente (fijo + aleatorios: %s)' % tipo, fontsize=10); ax2.legend(fontsize=8)
+    ax2.set_title('Ajustes por paciente (fijo + aleatorios) con IC del efecto fijo', fontsize=9); ax2.legend(fontsize=8)
     img2 = _png(fig2)
-    return txt, [('Ajuste del efecto fijo: la tendencia media común a todos', img1),
-                 ('Ajustes por paciente: efecto fijo + efectos aleatorios (una recta por paciente)', img2)]
+    return txt, [('Efecto fijo con su intervalo de confianza 95%% (tendencia media)'.replace('%%','%'), img1),
+                 ('Ajustes por paciente: efecto fijo + efectos aleatorios (con IC del efecto fijo)', img2)]
 
 # ================= dispatcher =================
 def run(model, pjson):
@@ -274,8 +290,7 @@ const CONTROLS = {
     {t:'select', k:'n', label:'Tamaño muestral (n) — prueba varios', def:160, opts:[40,80,160,320,640]},
   ],
   mixto: [
-    {t:'chk', k:'pendiente_aleatoria', label:'pendiente aleatoria por paciente', def:false},
-    {t:'select', k:'npac', label:'Nº de pacientes — prueba varios', def:30, opts:[10,20,30,60,100]},
+    {t:'select', k:'npac', label:'Nº de pacientes (tamaño muestral) — prueba varios', def:30, opts:[10,20,30,60,100]},
   ],
 };
 const ORDER=['ancova','logit','poisson','mixto'];
