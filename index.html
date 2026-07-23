@@ -265,10 +265,10 @@ async function boot(){
   const st=document.getElementById('status');
   try{
     pyodide = await loadPyodide();
-    st.textContent='⏳ Instalando statsmodels y scikit-learn…';
+    st.textContent='⏳ Instalando statsmodels, scikit-learn y matplotlib…';
     await pyodide.loadPackage('micropip');
     const micropip = pyodide.pyimport('micropip');
-    await micropip.install(['statsmodels','scikit-learn']);
+    await micropip.install(['statsmodels','scikit-learn','matplotlib']);
     await pyodide.runPythonAsync(document.getElementById('pycode').textContent);
     st.className='ok'; st.textContent='✅ Listo. Cambia los controles y pulsa «Ajustar modelo».';
     document.querySelectorAll('button.run').forEach(b=>b.disabled=false);
