@@ -26,6 +26,9 @@
   .ctrl select{width:150px;padding:6px 8px;border:1px solid var(--linea);border-radius:6px;background:#fff}
   .ctrl.chk{flex-direction:row;align-items:center;gap:8px} .ctrl.chk label{font-weight:500}
   .ctrl input[type=range]{width:170px} .rangeval{font-weight:700;color:var(--azul)}
+  .ctrl-line{margin:10px 0;padding:10px 12px;border:1px solid var(--linea);border-radius:8px;background:#eef4fa;font-size:13.5px}
+  .ctrl-line label{display:block;font-weight:600;color:#2f4a63;margin-bottom:6px}
+  .ctrl-line input[type=range]{width:100%;max-width:440px;display:block}
   .btns{margin:14px 0}
   button.run{background:var(--azul);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
   button.run:disabled{opacity:.5;cursor:not-allowed}
@@ -44,7 +47,7 @@
 </style></head>
 <body>
 <header>
-  <h1>Laboratorio interactivo de modelos estadísticos <span style="font-size:12px;font-weight:400;opacity:.85">· v4 (2026-07-23) · logística: curvas de probabilidad + mapa de calor</span></h1>
+  <h1>Laboratorio interactivo de modelos estadísticos <span style="font-size:12px;font-weight:400;opacity:.85">· v5 (2026-07-23) · logística: sliders con indicación por gráfico</span></h1>
   <p>Ajusta y reajusta los modelos de la prueba (ANCOVA · logística · Poisson · mixto) cambiando las variables. <b>Selecciona las variables</b> con las casillas y pulsa «Ajustar modelo».</p>
 </header>
 <div class="wrap">
@@ -230,9 +233,9 @@ const CONTROLS = {
     {t:'chk', k:'usar_horas', label:'horas de estudio', def:true},
     {t:'chk', k:'usar_asist', label:'asistencia', def:true},
     {t:'select', k:'n', label:'Tamaño muestral (n) — prueba varios', def:200, opts:[50,100,200,400,800]},
-    {t:'range', k:'asist_fija', label:'asistencia fija — gráfico 1 (%)', def:80, min:0, max:100, step:5},
-    {t:'range', k:'horas_fijas', label:'horas de estudio fijas — gráfico 2', def:6, min:0, max:10, step:0.5},
-    {t:'range', k:'umbral', label:'umbral de clasificación — mapa de calor', def:0.5, min:0.1, max:0.9, step:0.05},
+    {t:'line', k:'asist_fija', pre:'📈 Gráfico 1 — Predicción de la probabilidad de aprobar para una asistencia fija de', post:'%', def:80, min:0, max:100, step:5},
+    {t:'line', k:'horas_fijas', pre:'📈 Gráfico 2 — Predicción de la probabilidad de aprobar para unas horas de estudio fijas de', post:'', def:6, min:0, max:10, step:0.5},
+    {t:'line', k:'umbral', pre:'🗺️ Mapa de calor — Decide el umbral de clasificación para aprobar:', post:'', def:0.5, min:0.1, max:0.9, step:0.05},
   ],
   poisson: [
     {t:'chk', k:'usar_clientes', label:'nº de clientes', def:true},
@@ -258,16 +261,19 @@ ORDER.forEach((key,i)=>{
   tabsEl.appendChild(tab);
   const p=document.createElement('div'); p.className='panel'+(i===0?' active':''); p.id='panel-'+key;
   const d=QDATA[key];
-  let ctrl=CONTROLS[key].map(c=>{
+  let ctrl=CONTROLS[key].filter(c=>c.t!=='line').map(c=>{
     if(c.t==='chk') return `<div class="ctrl chk"><input type="checkbox" id="${key}_${c.k}" ${c.def?'checked':''}><label for="${key}_${c.k}">${c.label}</label></div>`;
     if(c.t==='range') return `<div class="ctrl"><label>${c.label}: <span class="rangeval" id="${key}_${c.k}_v">${c.def}</span></label><input type="range" id="${key}_${c.k}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.def}" oninput="document.getElementById('${key}_${c.k}_v').textContent=this.value"></div>`;
     if(c.t==='select') return `<div class="ctrl"><label for="${key}_${c.k}">${c.label}</label><select id="${key}_${c.k}">${c.opts.map(v=>`<option value="${v}" ${v===c.def?'selected':''}>${v}</option>`).join('')}</select></div>`;
     return `<div class="ctrl"><label for="${key}_${c.k}">${c.label}</label><input type="number" id="${key}_${c.k}" value="${c.def}" min="${c.min}" max="${c.max}" step="${c.step}"></div>`;
   }).join('');
+  let lineHtml=CONTROLS[key].filter(c=>c.t==='line').map(c=>
+    `<div class="ctrl-line"><label for="${key}_${c.k}">${c.pre} <span class="rangeval" id="${key}_${c.k}_v">${c.def}</span>${c.post?(' '+c.post):''}</label><input type="range" id="${key}_${c.k}" min="${c.min}" max="${c.max}" step="${c.step}" value="${c.def}" oninput="document.getElementById('${key}_${c.k}_v').textContent=this.value"></div>`).join('');
   let qs=d.preguntas.map(q=>{const op=shuffle(q.o);
     return `<div class="q"><div class="en">${q.n}. ${q.q}</div><ul>${op.map((o,j)=>`<li>${'abcd'[j]}) ${o}</li>`).join('')}</ul></div>`;}).join('');
   p.innerHTML=`<h2>${d.titulo}</h2><div class="ctx">${d.contexto}</div>
     <div class="controls"><div class="cleg">Selecciona las variables a incluir en el modelo</div>${ctrl}</div>
+    ${lineHtml}
     <div class="btns"><button class="run" id="btn-${key}" disabled onclick="ajustar('${key}')">Ajustar modelo</button>
       <button class="reset" onclick="restablecer('${key}')">Restablecer valores</button></div>
     <pre class="summary" id="sum-${key}">Pulsa «Ajustar modelo» para ver los resultados.</pre>
